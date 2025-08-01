@@ -1,0 +1,60 @@
+{
+  "title": "Sample Quiz - Indian History",
+  "questions": [
+    {
+      "question": "Who was the first Prime Minister of India?",
+      "options": [
+        "Mahatma Gandhi",
+        "Jawaharlal Nehru",
+        "Sardar Patel",
+        "Dr. Rajendra Prasad"
+      ],
+      "correct": 1,
+      "explanation": "Jawaharlal Nehru was the first Prime Minister of India, serving from 1947 to 1964."
+    },
+    {
+      "question": "In which year did India gain independence?",
+      "options": [
+        "1946",
+        "1947",
+        "1948",
+        "1949"
+      ],
+      "correct": 1,
+      "explanation": "India gained independence on August 15, 1947, after the end of British colonial rule."
+    },
+    {
+      "question": "Who is known as the 'Father of the Nation' in India?",
+      "options": [
+        "Jawaharlal Nehru",
+        "Mahatma Gandhi",
+        "Subhas Chandra Bose",
+        "Bhagat Singh"
+      ],
+      "correct": 1,
+      "explanation": "Mahatma Gandhi is known as the 'Father of the Nation' for his role in India's independence movement."
+    },
+    {
+      "question": "Which movement was launched by Gandhi in 1942?",
+      "options": [
+        "Non-Cooperation Movement",
+        "Civil Disobedience Movement",
+        "Quit India Movement",
+        "Khilafat Movement"
+      ],
+      "correct": 2,
+      "explanation": "The Quit India Movement was launched by Mahatma Gandhi in 1942, demanding an end to British rule."
+    },
+    {
+      "question": "Who wrote the Indian National Anthem 'Jana Gana Mana'?",
+      "options": [
+        "Bankim Chandra Chattopadhyay",
+        "Rabindranath Tagore",
+        "Sarojini Naidu",
+        "Kavi Pradeep"
+      ],
+      "correct": 1,
+      "explanation": "Rabindranath Tagore wrote 'Jana Gana Mana', which was adopted as India's national anthem."
+    }
+  ]
+}
