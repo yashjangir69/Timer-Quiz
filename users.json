@@ -1,0 +1,28 @@
+{
+  "users": [
+    {
+      "user_id": 7060447689,
+      "username": null,
+      "first_name": "Haat Sasura",
+      "last_name": null,
+      "full_name": "Haat Sasura",
+      "added_date": "2025-08-07T08:26:18.939424"
+    },
+    {
+      "user_id": 1257110699,
+      "username": "@Komal_US",
+      "first_name": "Komal",
+      "last_name": null,
+      "full_name": "Komal",
+      "added_date": "2025-08-07T13:14:13.461619"
+    },
+    {
+      "user_id": 5668254481,
+      "username": "@yashjangir69",
+      "first_name": "YASH Jangid",
+      "last_name": null,
+      "full_name": "YASH Jangid",
+      "added_date": "2025-08-10T19:09:08.637124"
+    }
+  ]
+}
