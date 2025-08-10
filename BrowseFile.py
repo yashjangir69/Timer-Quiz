@@ -7,7 +7,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 from Auth import authenticate
 from SchedulerManager import add_schedule, scheduler, set_bot_instance, test_notification, get_failed_notifications, handle_poll_answer_tracking
 from LeaderboardManager import leaderboard_manager
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import threading
 
 BOT_TOKEN = '7997187971:AAEoCYjMX1lqXNPtZ3zEIeBpshezeLM0yaI'
@@ -28,12 +28,52 @@ def escape_markdown_v2(text):
         text = text.replace(char, f'\\{char}')
     return text
 
+# Create the Telegram application
+application = Application.builder().token(BOT_TOKEN).build()
 bot = Bot(token=BOT_TOKEN)
 
 set_bot_instance(bot)
 
-# Flask app for keeping alive on Render
+# Setup handlers at module level
+def setup_handlers_webhook(app):
+    app.add_handler(CommandHandler("start", start_browsing))
+    app.add_handler(CallbackQueryHandler(handle_drive_callback, pattern="^(folder:|file:|back)"))
+    app.add_handler(CallbackQueryHandler(handle_start_quiz_type, pattern="^start_(single|sequence)_quiz$"))
+    app.add_handler(CallbackQueryHandler(handle_schedule_confirmation, pattern="^(confirm_schedule|cancel_schedule)$"))
+    app.add_handler(CallbackQueryHandler(handle_sequence_callbacks, pattern="^(gap_|seq_)"))
+    app.add_handler(CallbackQueryHandler(handle_final_sequence_confirmation, pattern="^(final_confirm_seq:|cancel_sequence)"))
+    app.add_handler(CommandHandler("schedules", list_schedules))
+    app.add_handler(CommandHandler("sequences", list_sequences))
+    app.add_handler(CommandHandler("pause_sequence", pause_sequence_command))
+    app.add_handler(CommandHandler("resume_sequence", resume_sequence_command))
+    app.add_handler(CallbackQueryHandler(delete_schedule_callback, pattern=r"^delete_schedule:"))
+    
+    # Test commands
+    app.add_handler(CommandHandler("test_notification", test_bot_notification))
+    app.add_handler(CommandHandler("test_quiz", test_sample_quiz))
+    app.add_handler(CommandHandler("failed_notifications", check_failed_notifications))
+    app.add_handler(CommandHandler("set_users_file", set_users_file_command))
+    app.add_handler(CommandHandler("test_leaderboard", test_leaderboard_command))
+    app.add_handler(CommandHandler("get_chat_id", get_chat_id_command))
+    app.add_handler(CommandHandler("test_group", test_group_access))
+    app.add_handler(CommandHandler("test_scheduled", test_scheduled_execution))
+    
+    app.add_handler(PollAnswerHandler(handle_poll_answer))
+    
+    # Text message handler
+    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text_message))
+    
+    # Error handler
+    app.add_error_handler(error_handler)
+
+# Setup the handlers for webhook - this will be called after all functions are defined
+# setup_handlers_webhook(application)
+
+# Flask app for keeping alive on Render  
 flask_app = Flask(__name__)
+
+# Alias for Gunicorn compatibility
+app = flask_app
 
 @flask_app.route('/')
 def home():
@@ -44,6 +84,32 @@ def home():
         "timestamp": datetime.now().isoformat(),
         "service": "telegram-quiz-bot"
     })
+
+@flask_app.route('/webhook', methods=['POST'])
+def webhook():
+    """Telegram webhook endpoint"""
+    try:
+        # Get the JSON data from Telegram
+        json_data = request.get_json()
+        
+        if json_data:
+            # Create an Update object from the JSON
+            update = Update.de_json(json_data, application.bot)
+            
+            if update:
+                # Process the update using the application's update queue
+                import asyncio
+                
+                # Run the async function in the event loop
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(application.process_update(update))
+                loop.close()
+                
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        print(f"❌ Webhook error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @flask_app.route('/health')
 def health_check():
@@ -136,38 +202,7 @@ STATE_SEQUENCE_WAITING_FOR_QUIZ_TIMER = "seq_waiting_for_quiz_timer"
 # User sequence data tracking
 user_sequence_data = {}
 
-def setup_handlers(application):
-    application.add_handler(CommandHandler("start", start_browsing))
-    application.add_handler(CallbackQueryHandler(handle_drive_callback, pattern="^(folder:|file:|back)"))
-    application.add_handler(CallbackQueryHandler(handle_start_quiz_type, pattern="^start_(single|sequence)_quiz$"))
-    application.add_handler(CallbackQueryHandler(handle_schedule_confirmation, pattern="^(confirm_schedule|cancel_schedule)$"))
-    application.add_handler(CallbackQueryHandler(handle_sequence_callbacks, pattern="^(gap_|seq_)"))
-    application.add_handler(CallbackQueryHandler(handle_final_sequence_confirmation, pattern="^(final_confirm_seq:|cancel_sequence)"))
-    application.add_handler(CommandHandler("schedules", list_schedules))
-    application.add_handler(CommandHandler("sequences", list_sequences))
-    application.add_handler(CommandHandler("pause_sequence", pause_sequence_command))
-    application.add_handler(CommandHandler("resume_sequence", resume_sequence_command))
-    application.add_handler(CallbackQueryHandler(delete_schedule_callback, pattern=r"^delete_schedule:"))
-    
-    # Group management commands (disabled - using hardcoded group)
-    # application.add_handler(CommandHandler("set_group", set_group_command))
-    # application.add_handler(CommandHandler("get_group", get_group_command))
-    
-    # Test commands
-    application.add_handler(CommandHandler("test_notification", test_bot_notification))
-    application.add_handler(CommandHandler("test_quiz", test_sample_quiz))
-    application.add_handler(CommandHandler("failed_notifications", check_failed_notifications))
-    application.add_handler(CommandHandler("set_users_file", set_users_file_command))
-    application.add_handler(CommandHandler("test_leaderboard", test_leaderboard_command))
-    application.add_handler(CommandHandler("get_chat_id", get_chat_id_command))
-    application.add_handler(CommandHandler("test_group", test_group_access))
-    application.add_handler(CommandHandler("test_scheduled", test_scheduled_execution))
-    
-    application.add_handler(PollAnswerHandler(handle_poll_answer))
-    
-    application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text_message))
-    
-    application.add_error_handler(error_handler)
+# Remove duplicate setup_handlers - using setup_handlers_webhook instead
 
 def shorten_name(name, max_len=25):
     return name if len(name) <= max_len else name[:22] + "..."
@@ -1665,20 +1700,45 @@ def get_bot():
     """Get the bot instance for external use"""
     return bot
 
+# Setup handlers after all functions are defined
+setup_handlers_webhook(application)
+
 def main():
-    """Main function to start the bot"""
-    application = Application.builder().token(BOT_TOKEN).build()
-    setup_handlers(application)
+    """Main function to start the bot with webhook"""
+    print("Quiz Bot starting with webhook...")
     
-    print("Quiz Bot starting...")
+    # Set up webhook URL (Render will provide this)
+    webhook_url = os.environ.get('RENDER_EXTERNAL_URL', 'https://timer-quiz-y7gc.onrender.com')
+    webhook_path = f"{webhook_url}/webhook"
     
-    # Start Flask server in a separate thread for Render keepalive
-    flask_thread = threading.Thread(target=run_flask, daemon=True)
-    flask_thread.start()
-    print("🌐 Flask keepalive server started")
+    # Initialize the application (already done at module level)
+    try:
+        # Set webhook
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        async def set_webhook():
+            await application.bot.set_webhook(webhook_path)
+            print(f"✅ Webhook set to: {webhook_path}")
+            
+        loop.run_until_complete(set_webhook())
+        loop.close()
+        
+    except Exception as e:
+        print(f"❌ Error setting webhook: {e}")
     
-    # Start the bot
+    print("🌐 Bot ready to receive webhooks via Flask app")
+
+# For local development, you can still use polling
+def main_polling():
+    """Alternative main function for local development with polling"""
+    print("Quiz Bot starting with polling (local development)...")
     application.run_polling()
 
 if __name__ == "__main__":
+    # Use polling for local development
+    main_polling()
+else:
+    # Use webhook when imported (for Gunicorn)
     main()
